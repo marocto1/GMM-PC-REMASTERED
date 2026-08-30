@@ -1,0 +1,60 @@
+name: Build temporary Roslyn checker
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-roslyn-checker.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build checker
+        run: |
+          set -euo pipefail
+          mkdir checker && cd checker
+          dotnet new console --framework net10.0 --force >/dev/null
+          dotnet add package Microsoft.CodeAnalysis.CSharp >/dev/null
+          cat > Program.cs <<'CS'
+          using System;
+          using System.IO;
+          using System.Linq;
+          using System.Collections.Generic;
+          using Microsoft.CodeAnalysis;
+          using Microsoft.CodeAnalysis.CSharp;
+
+          if (args.Length < 2) { Console.Error.WriteLine("usage: checker <sources-dir> <refs-dir> [refs-dir...]"); return 2; }
+          var sources = Directory.EnumerateFiles(args[0], "*.cs", SearchOption.AllDirectories).OrderBy(x=>x).ToArray();
+          var trees = sources.Select(p => CSharpSyntaxTree.ParseText(File.ReadAllText(p), new CSharpParseOptions(LanguageVersion.CSharp9), p)).ToArray();
+          var refs = new Dictionary<string, MetadataReference>(StringComparer.OrdinalIgnoreCase);
+          var tpa = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?.Split(Path.PathSeparator) ?? Array.Empty<string>();
+          foreach (var p in tpa) if (File.Exists(p)) refs[p] = MetadataReference.CreateFromFile(p);
+          foreach (var dir in args.Skip(1))
+          {
+              if (!Directory.Exists(dir)) continue;
+              foreach (var p in Directory.EnumerateFiles(dir, "*.dll", SearchOption.AllDirectories))
+              {
+                  try { refs[p] = MetadataReference.CreateFromFile(p); } catch { }
+              }
+          }
+          var compilation = CSharpCompilation.Create("GMM.Stage3.CompileCheck", trees, refs.Values,
+              new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe:true, optimizationLevel:OptimizationLevel.Debug));
+          using var ms = new MemoryStream();
+          var result = compilation.Emit(ms);
+          var diags = result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error || d.Severity == DiagnosticSeverity.Warning)
+              .OrderBy(d=>d.Location.SourceTree?.FilePath).ThenBy(d=>d.Location.GetLineSpan().StartLinePosition.Line).ToArray();
+          Console.WriteLine($"sources={sources.Length} refs={refs.Count} success={result.Success} errors={diags.Count(d=>d.Severity==DiagnosticSeverity.Error)} warnings={diags.Count(d=>d.Severity==DiagnosticSeverity.Warning)}");
+          foreach (var d in diags) Console.WriteLine(d.ToString());
+          return result.Success ? 0 : 1;
+          CS
+          dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o ../out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gmm-roslyn-checker-linux-x64
+          path: checker/out/*
+          compression-level: 0
+          retention-days: 1
