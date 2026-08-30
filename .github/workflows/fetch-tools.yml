@@ -1,0 +1,28 @@
+name: Fetch remaster tooling
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fetch-tools.yml'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download AssetRipper 2.0.0 Linux x64
+        run: |
+          set -euo pipefail
+          curl -fL --retry 5 --retry-delay 2 \
+            'https://github.com/AssetRipper/AssetRipper/releases/download/2.0.0/AssetRipper_linux_x64.tar.xz' \
+            -o AssetRipper_linux_x64.tar.xz
+          echo '6f5d4352d36795b944243eb3ec790ec37dbca6d6756e52605bc8616e042d384e  AssetRipper_linux_x64.tar.xz' | sha256sum -c -
+      - name: Upload AssetRipper
+        uses: actions/upload-artifact@v4
+        with:
+          name: assetripper-linux-x64-2.0.0
+          path: AssetRipper_linux_x64.tar.xz
+          compression-level: 0
+          retention-days: 1
