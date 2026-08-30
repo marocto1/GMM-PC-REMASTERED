@@ -1,0 +1,31 @@
+name: Fetch libssl1.1 for Unity 2021
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fetch-libssl11.yml'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Ubuntu 20.04 libssl1.1
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          docker run --rm -v "$PWD/out:/out" ubuntu:20.04 bash -lc '
+            set -e
+            apt-get update >/dev/null
+            cd /tmp
+            apt-get download libssl1.1 >/dev/null
+            cp libssl1.1_*.deb /out/libssl1.1.deb
+          '
+          ls -lh out/libssl1.1.deb
+          sha256sum out/libssl1.1.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libssl1.1-ubuntu20.04
+          path: out/libssl1.1.deb
+          compression-level: 0
+          retention-days: 1
