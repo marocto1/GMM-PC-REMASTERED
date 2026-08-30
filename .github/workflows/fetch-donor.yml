@@ -1,0 +1,31 @@
+name: Fetch Granny Legacy donor
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fetch-donor.yml'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download Granny Legacy v1.8.9 donor
+        run: |
+          set -euo pipefail
+          curl -fL --retry 5 --retry-delay 3 \
+            'https://github.com/takivn0/GrannyLegacyOffline/releases/download/1.8.9/Granny.Legacy.Offline.v1.8.9.zip' \
+            -o donor.zip
+          echo '43f1709704c93291fa96103ffaaef12ae0e8d4e50f4d3aff20c8b643f854012c  donor.zip' | sha256sum -c -
+          mkdir donor_parts
+          split -b 90M -d -a 2 donor.zip donor_parts/donor.part.
+          ls -lh donor_parts
+      - name: Upload donor chunks
+        uses: actions/upload-artifact@v4
+        with:
+          name: granny-legacy-v1.8.9-donor-parts
+          path: donor_parts/
+          compression-level: 0
+          retention-days: 1
