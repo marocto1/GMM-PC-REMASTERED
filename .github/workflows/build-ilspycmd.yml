@@ -24,14 +24,20 @@ jobs:
           cd ilspy
           git checkout a926ae7e8b5d71f836ee49511236d0eeaec063da
           rm -f global.json
-      - name: Publish ilspycmd self-contained
+      - name: Restore and publish ilspycmd self-contained
         run: |
           set -euo pipefail
           cd ilspy
+          dotnet restore ICSharpCode.ILSpyCmd/ICSharpCode.ILSpyCmd.csproj \
+            -r linux-x64 \
+            --force-evaluate \
+            -p:RestoreLockedMode=false
           dotnet publish ICSharpCode.ILSpyCmd/ICSharpCode.ILSpyCmd.csproj \
             -c Release \
             -r linux-x64 \
             --self-contained true \
+            --no-restore \
+            -p:RestoreLockedMode=false \
             -p:PublishSingleFile=true \
             -p:PublishTrimmed=false \
             -o ../ilspycmd-out
