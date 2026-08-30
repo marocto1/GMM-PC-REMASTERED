@@ -1,0 +1,133 @@
+name: Build donor recovered implementation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-donor-recovered.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Download Granny Legacy v1.8.9
+        run: |
+          set -euo pipefail
+          curl -fL --retry 5 --retry-delay 2 \
+            'https://github.com/takivn0/GrannyLegacyOffline/releases/download/1.8.9/Granny.Legacy.Offline.v1.8.9.zip' \
+            -o donor.zip
+          echo '43f1709704c93291fa96103ffaaef12ae0e8d4e50f4d3aff20c8b643f854012c  donor.zip' | sha256sum -c -
+          mkdir donor
+          unzip -q donor.zip -d donor
+
+      - name: Download current Cpp2IL CI artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fL \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            'https://api.github.com/repos/SamboyCoding/Cpp2IL/actions/artifacts/9068021149/zip' \
+            -o cpp2il.zip
+          mkdir cpp2il
+          unzip -q cpp2il.zip -d cpp2il
+          chmod +x cpp2il/Cpp2IL
+          ./cpp2il/Cpp2IL --help >/dev/null
+
+      - name: Recover donor managed IL
+        run: |
+          set -euo pipefail
+          GAME_DIR="$(find donor -type f -name 'Granny Legacy.exe' -printf '%h\n' | head -n1)"
+          test -n "$GAME_DIR"
+          mkdir recovered
+          ./cpp2il/Cpp2IL \
+            --game-path "$GAME_DIR" \
+            --output-root recovered \
+            --use-processor attributeinjector \
+            --use-processor internalcallinjector \
+            --use-processor deadlineremover \
+            --use-processor attributeanalyzer \
+            --use-processor callanalyzer \
+            --output-as dll_il_recovery
+          test -s recovered/Assembly-CSharp.dll
+
+      - name: Namespace recovered donor Assembly-CSharp
+        run: |
+          set -euo pipefail
+          mkdir patcher
+          cd patcher
+          dotnet new console --framework net10.0 --force >/dev/null
+          dotnet add package Mono.Cecil --version 0.11.6 >/dev/null
+          cat > Program.cs <<'CS'
+          using System;
+          using System.IO;
+          using System.Linq;
+          using Mono.Cecil;
+
+          if (args.Length != 2) throw new ArgumentException("input output");
+          var input = args[0];
+          var output = args[1];
+          var asm = AssemblyDefinition.ReadAssembly(input, new ReaderParameters { ReadSymbols = false });
+          asm.Name.Name = "GMM.DonorRecovered";
+          asm.MainModule.Name = "GMM.DonorRecovered.dll";
+
+          int moved = 0;
+          foreach (var type in asm.MainModule.Types)
+          {
+              if (type.Name == "<Module>") continue;
+              type.Namespace = string.IsNullOrEmpty(type.Namespace)
+                  ? "GMM.DonorRecovered"
+                  : "GMM.DonorRecovered." + type.Namespace;
+              moved++;
+          }
+
+          static void Strip(ICustomAttributeProvider p)
+          {
+              for (int i = p.CustomAttributes.Count - 1; i >= 0; i--)
+              {
+                  var ns = p.CustomAttributes[i].AttributeType.Namespace ?? "";
+                  if (ns.StartsWith("Cpp2ILInjected", StringComparison.Ordinal))
+                      p.CustomAttributes.RemoveAt(i);
+              }
+          }
+          Strip(asm);
+          Strip(asm.MainModule);
+          foreach (var t in asm.MainModule.Types.SelectMany(AllTypes))
+          {
+              Strip(t);
+              foreach (var f in t.Fields) Strip(f);
+              foreach (var m in t.Methods) Strip(m);
+              foreach (var p in t.Properties) Strip(p);
+              foreach (var e in t.Events) Strip(e);
+          }
+
+          Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
+          asm.Write(output);
+          File.WriteAllText(output + ".map.txt", $"assembly=GMM.DonorRecovered\ntop_level_types={moved}\n");
+          Console.WriteLine($"Namespaced {moved} top-level donor types");
+
+          static System.Collections.Generic.IEnumerable<TypeDefinition> AllTypes(TypeDefinition t)
+          {
+              yield return t;
+              foreach (var n in t.NestedTypes)
+                  foreach (var x in AllTypes(n)) yield return x;
+          }
+          CS
+          dotnet run -c Release -- ../recovered/Assembly-CSharp.dll ../GMM.DonorRecovered.dll
+          cd ..
+          ls -lh GMM.DonorRecovered.dll GMM.DonorRecovered.dll.map.txt
+
+      - name: Upload recovered donor implementation
+        uses: actions/upload-artifact@v4
+        with:
+          name: gmm-donor-recovered-implementation
+          path: |
+            GMM.DonorRecovered.dll
+            GMM.DonorRecovered.dll.map.txt
+          compression-level: 0
+          retention-days: 1
