@@ -19,10 +19,27 @@ jobs:
             'https://github.com/AssetRipper/AssetRipper/releases/download/2.0.0/AssetRipper_linux_x64.tar.xz' \
             -o AssetRipper_linux_x64.tar.xz
           echo '6f5d4352d36795b944243eb3ec790ec37dbca6d6756e52605bc8616e042d384e  AssetRipper_linux_x64.tar.xz' | sha256sum -c -
+      - name: Download Cpp2IL 2022.0.7 Linux
+        run: |
+          set -euo pipefail
+          curl -fL --retry 5 --retry-delay 2 \
+            'https://github.com/SamboyCoding/Cpp2IL/releases/download/2022.0.7/Cpp2IL-2022.0.7-Linux' \
+            -o Cpp2IL-2022.0.7-Linux
+          chmod +x Cpp2IL-2022.0.7-Linux
+          sha256sum Cpp2IL-2022.0.7-Linux > Cpp2IL-2022.0.7-Linux.sha256
       - name: Upload AssetRipper
         uses: actions/upload-artifact@v4
         with:
           name: assetripper-linux-x64-2.0.0
           path: AssetRipper_linux_x64.tar.xz
+          compression-level: 0
+          retention-days: 1
+      - name: Upload Cpp2IL
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp2il-linux-2022.0.7
+          path: |
+            Cpp2IL-2022.0.7-Linux
+            Cpp2IL-2022.0.7-Linux.sha256
           compression-level: 0
           retention-days: 1
