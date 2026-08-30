@@ -22,11 +22,60 @@ jobs:
           mkdir donor_parts
           split -b 90M -d -a 2 donor.zip donor_parts/donor.part.
           ls -lh donor_parts
-      - name: Upload donor chunks
+      - name: Upload chunk 00
         uses: actions/upload-artifact@v4
         with:
-          name: granny-legacy-v1.8.9-donor-parts
-          path: donor_parts/
+          name: donor-part-00
+          path: donor_parts/donor.part.00
+          compression-level: 0
+          retention-days: 1
+      - name: Upload chunk 01
+        uses: actions/upload-artifact@v4
+        with:
+          name: donor-part-01
+          path: donor_parts/donor.part.01
+          compression-level: 0
+          retention-days: 1
+      - name: Upload chunk 02
+        uses: actions/upload-artifact@v4
+        with:
+          name: donor-part-02
+          path: donor_parts/donor.part.02
+          compression-level: 0
+          retention-days: 1
+      - name: Upload chunk 03
+        uses: actions/upload-artifact@v4
+        with:
+          name: donor-part-03
+          path: donor_parts/donor.part.03
+          compression-level: 0
+          retention-days: 1
+      - name: Upload chunk 04
+        uses: actions/upload-artifact@v4
+        with:
+          name: donor-part-04
+          path: donor_parts/donor.part.04
+          compression-level: 0
+          retention-days: 1
+      - name: Upload chunk 05
+        uses: actions/upload-artifact@v4
+        with:
+          name: donor-part-05
+          path: donor_parts/donor.part.05
+          compression-level: 0
+          retention-days: 1
+      - name: Upload chunk 06
+        uses: actions/upload-artifact@v4
+        with:
+          name: donor-part-06
+          path: donor_parts/donor.part.06
+          compression-level: 0
+          retention-days: 1
+      - name: Upload chunk 07
+        uses: actions/upload-artifact@v4
+        with:
+          name: donor-part-07
+          path: donor_parts/donor.part.07
           compression-level: 0
           retention-days: 1
 
