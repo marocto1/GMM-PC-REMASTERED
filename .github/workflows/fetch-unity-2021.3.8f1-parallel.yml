@@ -1,0 +1,47 @@
+name: Fetch Unity 2021.3.8f1 parallel
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fetch-unity-2021.3.8f1-parallel.yml'
+  workflow_dispatch:
+
+jobs:
+  fetch-part:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - idx: '00'
+            range: '0-306814103'
+          - idx: '01'
+            range: '306814104-613628207'
+          - idx: '02'
+            range: '613628208-920442311'
+          - idx: '03'
+            range: '920442312-1227256415'
+          - idx: '04'
+            range: '1227256416-1534070519'
+          - idx: '05'
+            range: '1534070520-1840884623'
+          - idx: '06'
+            range: '1840884624-2147698727'
+          - idx: '07'
+            range: '2147698728-2454512827'
+    steps:
+      - name: Fetch range ${{ matrix.idx }}
+        run: |
+          set -euo pipefail
+          URL='https://download.unity3d.com/download_unity/b30333d56e81/LinuxEditorInstaller/Unity-2021.3.8f1.tar.xz'
+          curl -fL --retry 6 --retry-delay 2 -r '${{ matrix.range }}' "$URL" -o 'unity-editor-part-${{ matrix.idx }}'
+          wc -c 'unity-editor-part-${{ matrix.idx }}'
+          sha256sum 'unity-editor-part-${{ matrix.idx }}' > 'unity-editor-part-${{ matrix.idx }}.sha256'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unity-editor-part-${{ matrix.idx }}
+          path: |
+            unity-editor-part-${{ matrix.idx }}
+            unity-editor-part-${{ matrix.idx }}.sha256
+          compression-level: 0
+          retention-days: 1
