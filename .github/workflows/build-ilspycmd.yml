@@ -1,0 +1,39 @@
+name: Build temporary ilspycmd
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-ilspycmd.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Clone ILSpy
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/icsharpcode/ILSpy.git ilspy
+          cd ilspy
+          git checkout a926ae7e8b5d71f836ee49511236d0eeaec063da
+      - name: Publish ilspycmd self-contained
+        run: |
+          set -euo pipefail
+          cd ilspy
+          dotnet publish ICSharpCode.ILSpyCmd/ILSpyCmd.csproj \
+            -c Release \
+            -r linux-x64 \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:PublishTrimmed=false \
+            -o ../ilspycmd-out
+          ls -lh ../ilspycmd-out
+      - name: Upload ilspycmd
+        uses: actions/upload-artifact@v4
+        with:
+          name: ilspycmd-linux-x64-self-contained
+          path: ilspycmd-out/
+          compression-level: 0
+          retention-days: 1
