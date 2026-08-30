@@ -1,0 +1,87 @@
+name: Build temporary assembly namespacer
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-assembly-namespacer.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Build self-contained Mono.Cecil namespacer
+        run: |
+          set -euo pipefail
+          mkdir tool && cd tool
+          dotnet new console --framework net10.0 --force >/dev/null
+          dotnet add package Mono.Cecil --version 0.11.6 >/dev/null
+          cat > Program.cs <<'CS'
+          using System;
+          using System.IO;
+          using System.Linq;
+          using System.Collections.Generic;
+          using Mono.Cecil;
+
+          if (args.Length != 4)
+          {
+              Console.Error.WriteLine("usage: namespacer <input.dll> <output.dll> <assembly-name> <namespace-prefix>");
+              return 2;
+          }
+          var input = args[0];
+          var output = args[1];
+          var assemblyName = args[2];
+          var prefix = args[3].Trim('.');
+          var asm = AssemblyDefinition.ReadAssembly(input, new ReaderParameters { ReadSymbols = false });
+          asm.Name.Name = assemblyName;
+          asm.MainModule.Name = Path.GetFileName(output);
+
+          static IEnumerable<TypeDefinition> AllTypes(TypeDefinition t)
+          {
+              yield return t;
+              foreach (var n in t.NestedTypes)
+                  foreach (var x in AllTypes(n)) yield return x;
+          }
+          static void Strip(ICustomAttributeProvider p)
+          {
+              for (int i = p.CustomAttributes.Count - 1; i >= 0; i--)
+              {
+                  var ns = p.CustomAttributes[i].AttributeType.Namespace ?? "";
+                  if (ns.StartsWith("Cpp2ILInjected", StringComparison.Ordinal))
+                      p.CustomAttributes.RemoveAt(i);
+              }
+          }
+
+          int top = 0;
+          foreach (var type in asm.MainModule.Types)
+          {
+              if (type.Name == "<Module>") continue;
+              type.Namespace = string.IsNullOrEmpty(type.Namespace) ? prefix : prefix + "." + type.Namespace;
+              top++;
+          }
+          Strip(asm); Strip(asm.MainModule);
+          foreach (var t in asm.MainModule.Types.SelectMany(AllTypes))
+          {
+              Strip(t);
+              foreach (var f in t.Fields) Strip(f);
+              foreach (var m in t.Methods) Strip(m);
+              foreach (var p in t.Properties) Strip(p);
+              foreach (var e in t.Events) Strip(e);
+          }
+          Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
+          asm.Write(output);
+          Console.WriteLine($"assembly={assemblyName}; prefix={prefix}; top_level_types={top}");
+          return 0;
+          CS
+          dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o ../out
+          ../out/tool --help >/dev/null 2>&1 || true
+          ls -lh ../out
+      - name: Upload namespacer
+        uses: actions/upload-artifact@v4
+        with:
+          name: gmm-assembly-namespacer-linux-x64
+          path: out/
+          compression-level: 0
+          retention-days: 1
