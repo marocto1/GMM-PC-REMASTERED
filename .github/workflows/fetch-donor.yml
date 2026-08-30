@@ -29,3 +29,5 @@ jobs:
           path: donor_parts/
           compression-level: 0
           retention-days: 1
+
+# transport-only workflow; remove after donor acquisition
