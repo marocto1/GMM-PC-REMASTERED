@@ -12,6 +12,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Set up .NET 11 preview
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '11.0.x'
+          dotnet-quality: 'preview'
       - name: Clone ILSpy
         run: |
           set -euo pipefail
@@ -22,6 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           cd ilspy
+          dotnet --info
           dotnet publish ICSharpCode.ILSpyCmd/ILSpyCmd.csproj \
             -c Release \
             -r linux-x64 \
