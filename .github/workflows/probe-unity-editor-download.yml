@@ -1,0 +1,21 @@
+name: Probe Unity editor download
+
+on:
+  push:
+    paths:
+      - '.github/workflows/probe-unity-editor-download.yml'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe headers
+        run: |
+          set -euo pipefail
+          URL='https://download.unity3d.com/download_unity/b30333d56e81/LinuxEditorInstaller/Unity-2021.3.8f1.tar.xz'
+          curl -fsSIL "$URL" | tee headers.txt
+          echo '--- RANGE TEST ---'
+          curl -fsSL -r 0-1023 -D range-headers.txt "$URL" -o first-kib.bin
+          cat range-headers.txt
+          wc -c first-kib.bin
