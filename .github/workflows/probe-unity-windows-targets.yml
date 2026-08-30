@@ -1,0 +1,24 @@
+name: Probe Unity Windows target modules
+
+on:
+  push:
+    paths:
+      - '.github/workflows/probe-unity-windows-targets.yml'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe Windows target module URLs
+        run: |
+          set -euo pipefail
+          BASE='https://download.unity3d.com/download_unity/b30333d56e81/LinuxEditorTargetInstaller'
+          for f in \
+            'UnitySetup-Windows-Mono-Support-for-Editor-2021.3.8f1.tar.xz' \
+            'UnitySetup-Windows-IL2CPP-Support-for-Editor-2021.3.8f1.tar.xz' \
+            'UnitySetup-Windows-Support-for-Editor-2021.3.8f1.tar.xz'
+          do
+            code=$(curl -L -sS -o /dev/null -w '%{http_code}' "$BASE/$f" || true)
+            echo "$code $BASE/$f"
+          done
