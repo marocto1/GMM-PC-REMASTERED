@@ -47,7 +47,7 @@ jobs:
           mkdir recovered
           ./cpp2il/Cpp2IL \
             --game-path "$GAME_DIR" \
-            --output-root recovered \
+            --output-to recovered \
             --use-processor attributeinjector \
             --use-processor internalcallinjector \
             --use-processor deadlineremover \
