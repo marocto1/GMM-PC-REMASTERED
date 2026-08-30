@@ -37,24 +37,29 @@ jobs:
           mkdir cpp2il
           unzip -q cpp2il.zip -d cpp2il
           chmod +x cpp2il/Cpp2IL
-          ./cpp2il/Cpp2IL --help >/dev/null
+          (cd cpp2il && ./Cpp2IL --help >/dev/null)
 
       - name: Recover donor managed IL
         run: |
           set -euo pipefail
           GAME_DIR="$(find donor -type f -name 'Granny Legacy.exe' -printf '%h\n' | head -n1)"
           test -n "$GAME_DIR"
+          GAME_DIR="$(realpath "$GAME_DIR")"
           mkdir recovered
-          ./cpp2il/Cpp2IL \
-            --game-path "$GAME_DIR" \
-            --exe-name 'Granny Legacy' \
-            --output-to recovered \
-            --use-processor attributeinjector \
-            --use-processor internalcallinjector \
-            --use-processor deadlineremover \
-            --use-processor attributeanalyzer \
-            --use-processor callanalyzer \
-            --output-as dll_il_recovery
+          RECOVERED_DIR="$(realpath recovered)"
+          (
+            cd cpp2il
+            ./Cpp2IL \
+              --game-path "$GAME_DIR" \
+              --exe-name 'Granny Legacy' \
+              --output-to "$RECOVERED_DIR" \
+              --use-processor attributeinjector \
+              --use-processor internalcallinjector \
+              --use-processor deadlineremover \
+              --use-processor attributeanalyzer \
+              --use-processor callanalyzer \
+              --output-as dll_il_recovery
+          )
           test -s recovered/Assembly-CSharp.dll
 
       - name: Namespace recovered donor Assembly-CSharp
