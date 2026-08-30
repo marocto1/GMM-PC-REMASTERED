@@ -55,8 +55,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: gmm-roslyn-checker-linux-x64
-          path: checker/out/*
+          path: out/*
           compression-level: 0
           retention-days: 1
 
-# rebuild: 2026-08-30-stage4
+# rebuild: 2026-08-30-stage4-upload-fix
