@@ -53,9 +53,6 @@ jobs:
               --game-path "$GAME_DIR" \
               --exe-name 'Granny Legacy' \
               --output-to "$RECOVERED_DIR" \
-              --use-processor attributeinjector \
-              --use-processor internalcallinjector \
-              --use-processor deadlineremover \
               --use-processor attributeanalyzer \
               --use-processor callanalyzer \
               --output-as dll_il_recovery
