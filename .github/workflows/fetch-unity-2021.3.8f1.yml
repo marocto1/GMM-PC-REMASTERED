@@ -1,0 +1,39 @@
+name: Fetch Unity 2021.3.8f1 Editor
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fetch-unity-2021.3.8f1.yml'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download official Unity Linux Editor
+        run: |
+          set -euo pipefail
+          URL='https://download.unity3d.com/download_unity/b30333d56e81/LinuxEditorInstaller/Unity-2021.3.8f1.tar.xz'
+          curl -fL --retry 5 --retry-delay 3 "$URL" -o Unity-2021.3.8f1.tar.xz
+          sha256sum Unity-2021.3.8f1.tar.xz | tee Unity-2021.3.8f1.sha256
+          mkdir verify
+          tar -xJf Unity-2021.3.8f1.tar.xz -C verify
+          UNITY_BIN="$(find verify -type f -path '*/Editor/Unity' | head -n1)"
+          test -x "$UNITY_BIN"
+          "$UNITY_BIN" -version | tee unity-version.txt || true
+          grep -q '2021.3.8f1' unity-version.txt
+      - name: Split editor archive
+        run: |
+          set -euo pipefail
+          split -b 300M -d -a 2 Unity-2021.3.8f1.tar.xz unity-editor-part-
+          ls -lh unity-editor-part-*
+      - name: Upload editor chunks
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-editor-2021.3.8f1-chunks
+          path: |
+            unity-editor-part-*
+            Unity-2021.3.8f1.sha256
+            unity-version.txt
+          compression-level: 0
+          retention-days: 1
