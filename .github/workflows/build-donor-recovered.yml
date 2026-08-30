@@ -47,6 +47,7 @@ jobs:
           mkdir recovered
           ./cpp2il/Cpp2IL \
             --game-path "$GAME_DIR" \
+            --exe-name 'Granny Legacy.exe' \
             --output-to recovered \
             --use-processor attributeinjector \
             --use-processor internalcallinjector \
